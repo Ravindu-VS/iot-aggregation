@@ -4,16 +4,15 @@
 #include <Wire.h>
 #include <Adafruit_BMP085.h>
 #include <memory>
-#include "cloud_endpoint.h"
 
 // -------- Wi-Fi --------
-const char* WIFI_SSID = "Your Wi-Fi SSID";
-const char* WIFI_PASSWORD = "Your Wi-Fi Password";
+const char* WIFI_SSID = "Your_WiFi_SSID";
+const char* WIFI_PASSWORD = "Your_WiFi_Password";
 
 const char* API_PATH = "/data";
 
 #ifndef CLOUD_API_BASE_URL
-#define CLOUD_API_BASE_URL "https://REPLACE_WITH_DEPLOYED_API_URL/Prod"
+#define CLOUD_API_BASE_URL "https://9z8yrm8y95.execute-api.us-east-1.amazonaws.com/Prod"
 #endif
 
 // Node identity

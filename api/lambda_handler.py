@@ -4,6 +4,7 @@ import base64
 import json
 import logging
 from typing import Any
+from urllib.parse import unquote
 
 from backend.exceptions import BackendError, RecordNotFoundError, ValidationError
 from backend.services import get_summary_by_id, ingest_sensor_payload, list_uploads
@@ -102,7 +103,7 @@ def handler(event, context):
             return _json_response(200, {"data": list_alerts(active_only=True)})
 
         if path.startswith("/alerts/") and method == "DELETE":
-            alert_id = path.split("/", 2)[2]
+            alert_id = unquote(path.split("/", 2)[2])
             if not alert_id:
                 return _json_response(400, {"error": "alert_id is required"})
             cleared = clear_alert(alert_id)

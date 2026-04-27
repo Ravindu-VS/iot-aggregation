@@ -235,13 +235,14 @@ function updateNodePanels(data = appState.allData) {
         const valueEl = card.querySelector('.metric-value');
         const trendEl = card.querySelector('.metric-trend');
         const metricKey = metricKeys[index];
-        const value = latestRecord?.summary?.[metricKey]?.latest;
+        // Use summary if available (processed), otherwise fall back to raw metrics
+        const value = latestRecord?.summary?.[metricKey]?.latest ?? latestRecord?.metrics?.[metricKey];
 
         if (valueEl) {
           valueEl.textContent = value !== undefined && value !== null ? formatMetricValue(value) : '--';
         }
         if (trendEl) {
-          trendEl.textContent = latestRecord && isFresh && latestRecord.status === 'done' ? 'Latest' : 'No data';
+          trendEl.textContent = latestRecord && isFresh ? 'Latest' : 'No data';
         }
       });
     }
@@ -445,7 +446,7 @@ function buildMetricHistorySeries(data, metricKey) {
     .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
     .map((item) => {
       const summary = item.summary?.[metricKey];
-      const value = summary?.latest;
+      const value = summary?.latest ?? item.metrics?.[metricKey];
       if (value === undefined || value === null) {
         return null;
       }
@@ -639,7 +640,7 @@ function collectMetricValues(records, metricKey, fromMs, toMs) {
       const t = new Date(record.timestamp).getTime();
       return !Number.isNaN(t) && t >= fromMs && t <= toMs;
     })
-    .map((record) => record.summary?.[metricKey]?.latest)
+    .map((record) => record.summary?.[metricKey]?.latest ?? record.metrics?.[metricKey])
     .filter((value) => value !== undefined && value !== null)
     .map((value) => Number(value))
     .filter((value) => !Number.isNaN(value));
