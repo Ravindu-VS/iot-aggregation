@@ -1,0 +1,151 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: IoT Data Aggregation serverless deployment
+
+Globals:
+  Function:
+    Runtime: python3.10
+    Timeout: 30
+    MemorySize: 512
+    Environment:
+      Variables:
+        USE_LOCAL: 'false'
+        DYNAMO_TABLE: !Ref DataTable
+        ALERTS_TABLE: !Ref AlertsTable
+        ALERT_STATES_TABLE: !Ref AlertStatesTable
+        BUCKET_NAME: !Ref DataBucket
+        SQS_QUEUE_URL: !Ref JobQueue
+
+Resources:
+  DataBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub '${AWS::StackName}-iot-data-${AWS::AccountId}'
+
+  FrontendBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub '${AWS::StackName}-frontend-${AWS::AccountId}'
+      WebsiteConfiguration:
+        IndexDocument: index.html
+        ErrorDocument: index.html
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerEnforced
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: false
+        BlockPublicPolicy: false
+        IgnorePublicAcls: false
+        RestrictPublicBuckets: false
+
+  FrontendBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref FrontendBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: '*'
+            Action: 's3:GetObject'
+            Resource: !Sub '${FrontendBucket.Arn}/*'
+
+  JobQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      VisibilityTimeout: 60
+
+  DataTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: data_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: data_id
+          KeyType: HASH
+
+  AlertsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: alert_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: alert_id
+          KeyType: HASH
+
+  AlertStatesTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: state_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: state_id
+          KeyType: HASH
+
+  ApiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../..
+      Handler: api.lambda_handler.handler
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - DynamoDBCrudPolicy:
+            TableName: !Ref DataTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref AlertsTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref AlertStatesTable
+        - SQSSendMessagePolicy:
+            QueueName: !GetAtt JobQueue.QueueName
+        - S3CrudPolicy:
+            BucketName: !Ref DataBucket
+      Events:
+        ApiProxy:
+          Type: Api
+          Properties:
+            Path: /{proxy+}
+            Method: ANY
+        ApiRoot:
+          Type: Api
+          Properties:
+            Path: /
+            Method: ANY
+
+  WorkerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../..
+      Handler: worker.lambda_handler.handler
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - DynamoDBCrudPolicy:
+            TableName: !Ref DataTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref AlertsTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref AlertStatesTable
+        - S3CrudPolicy:
+            BucketName: !Ref DataBucket
+      Events:
+        QueueEvent:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt JobQueue.Arn
+            BatchSize: 1
+
+Outputs:
+  ApiUrl:
+    Description: API Gateway URL
+    Value: !Sub 'https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod'
+  FrontendBucketName:
+    Description: Static site bucket name
+    Value: !Ref FrontendBucket
+  FrontendWebsiteURL:
+    Description: Static website URL
+    Value: !GetAtt FrontendBucket.WebsiteURL

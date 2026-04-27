@@ -1,9 +1,12 @@
 from flask import Flask, jsonify, request
 import sys
 import logging
+from pathlib import Path
 
-# Ensure project root modules (backend/, db/, shared/) are importable in container.
-sys.path.insert(0, "/app")
+# Ensure project root modules (backend/, db/, shared/) are importable.
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 from backend.exceptions import BackendError, RecordNotFoundError, ValidationError
 from backend.services import (
@@ -21,6 +24,20 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
+
+
+@app.after_request
+def add_cors_headers(response):
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type,Authorization"
+    response.headers["Access-Control-Allow-Methods"] = "GET,POST,DELETE,OPTIONS"
+    return response
+
+
+@app.route("/", methods=["OPTIONS"])
+@app.route("/<path:_path>", methods=["OPTIONS"])
+def options_preflight(_path=None):
+    return "", 204
 
 # Defer database initialization to avoid connection errors during testing
 # when the database service isn't running

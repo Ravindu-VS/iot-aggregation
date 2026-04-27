@@ -42,6 +42,61 @@ Service URLs:
 - MinIO Console: http://localhost:9001
 - DynamoDB Local: http://localhost:8000
 
+## Clean AWS Cloud Deploy (Scripted)
+
+This project now supports clean, no-manual-service deployment through one script.
+
+Prerequisites:
+
+- AWS CLI configured (`aws configure`)
+- AWS SAM CLI installed
+- Python 3.10+ available
+
+Optional clean slate:
+
+```powershell
+aws cloudformation delete-stack --stack-name iot-aggregation --region us-east-1
+```
+
+Deploy everything (API Gateway + Lambda + SQS + DynamoDB + S3 frontend):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/deploy_cloud.ps1
+```
+
+What the script does:
+
+- Cleans `.aws-sam` build artifacts
+- Builds and deploys SAM stack
+- Uploads frontend to S3 website bucket
+- Writes deployed API URL to `frontend/config.js`
+- Writes deployed API URL to `esp8266_sensor_nodes/cloud_endpoint.h`
+- Runs cloud smoke test (`GET /health`, `POST /data`)
+
+Expected outputs include:
+
+- API URL (`https://...execute-api.../Prod`)
+- Frontend bucket path
+- Smoke-test `data_id`
+
+## ESP8266 Cloud Integration
+
+Both sketches now use HTTPS and the generated cloud endpoint header:
+
+- `esp8266_sensor_nodes/temp_humidity_node.ino`
+- `esp8266_sensor_nodes/pressure_ethanol_node.ino`
+
+After deployment, reflash both nodes.
+They post to `https://<api-id>.execute-api.<region>.amazonaws.com/Prod/data`.
+
+## End-to-End Cloud Flow
+
+1. ESP8266 nodes send JSON metrics to API Gateway `/data`.
+2. API Lambda stores record in DynamoDB and publishes job to SQS.
+3. Worker Lambda consumes SQS and computes summaries/alerts.
+4. Frontend fetches `/list` and `/alerts` from API Gateway.
+5. Dashboard displays latest node metrics and alert states.
+
 ## API Endpoints
 
 - `GET /health`
