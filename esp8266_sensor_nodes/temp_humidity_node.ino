@@ -12,7 +12,7 @@ const char* WIFI_PASSWORD = "Your_WiFi_Password";
 const char* API_PATH = "/data";
 
 #ifndef CLOUD_API_BASE_URL
-#define CLOUD_API_BASE_URL "https://9z8yrm8y95.execute-api.us-east-1.amazonaws.com/Prod"
+#define CLOUD_API_BASE_URL "https://<api-id>.execute-api.<region>.amazonaws.com/Prod/data"
 #endif
 
 // Node identity
