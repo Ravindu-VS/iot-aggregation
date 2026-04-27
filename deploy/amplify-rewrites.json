@@ -1,0 +1,8 @@
+[
+  {
+    "source": "/api/<*>",
+    "target": "http://3.27.44.79:5000/<*>",
+    "status": "200",
+    "condition": null
+  }
+]

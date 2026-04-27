@@ -1,0 +1,11 @@
+﻿<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <defs>
+    <style>
+      .icon-bg { fill: #7c3aed; }
+      .icon-circle { fill: #00d4ff; }
+    </style>
+  </defs>
+  <rect class="icon-bg" width="32" height="32" rx="4"/>
+  <circle class="icon-circle" cx="16" cy="16" r="8"/>
+  <circle class="icon-circle" cx="16" cy="16" r="5" fill="none" stroke="#00d4ff" stroke-width="1.5"/>
+</svg>

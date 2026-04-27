@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+.env
+.venv/
+IoT_Project_Guide.html
+Distributed Systems Mini Project.pdf
+Case studies for Distributed Systems Mini Project (1).pdf
+API_SPECIFICATION.md
+API_QUICK_REFERENCE.md
+API_DEVELOPER_WORK.md
+API_DEVELOPER_REQUIREMENTS_CHECKLIST.md
