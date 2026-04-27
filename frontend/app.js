@@ -7,11 +7,8 @@
 // CONFIGURATION
 // ============================================
 
-// API calls go to /api on the SAME origin.
-// - Local Docker:  Nginx proxies /api/* → Flask (localhost:5000)
-// - Amplify prod:  Amplify rewrite rule proxies /api/* → http://3.27.44.79:5000/*
-// This eliminates Mixed Content — browser only talks HTTPS to Amplify.
-const API_BASE_URL = '/api';
+// API_BASE_URL will be set to the CloudFront HTTPS domain
+const API_BASE_URL = 'https://dbobaqxodowtk.cloudfront.net';
 
 const AUTO_REFRESH_INTERVAL = 2000;
 const STATUS_REFRESH_INTERVAL = 1000;
