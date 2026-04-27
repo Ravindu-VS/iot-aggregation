@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import os
-from decimal import Decimal
 from datetime import datetime, timezone
+from decimal import Decimal
 
 try:
     import boto3
@@ -11,13 +11,9 @@ except ImportError:
     boto3 = None
     ClientError = Exception
 
-TABLE_NAME = os.getenv("DYNAMO_TABLE", "iot_data")
-AWS_REGION = os.getenv("AWS_REGION", "us-east-1")
-DYNAMO_ENDPOINT = os.getenv("DYNAMO_ENDPOINT", "http://dynamodb-local:8000")
-USE_LOCAL = os.getenv("USE_LOCAL", "true").lower() == "true"
-
 _IN_MEMORY_STORE: dict[str, dict] = {}
 _table = None
+_table_signature: tuple[str, bool, str] | None = None
 
 
 def _now_iso() -> str:
@@ -50,22 +46,41 @@ def _using_in_memory() -> bool:
     return boto3 is None
 
 
+def _table_name() -> str:
+    return os.getenv("DYNAMO_TABLE", "iot_data")
+
+
+def _aws_region() -> str:
+    return os.getenv("AWS_REGION", "us-east-1")
+
+
+def _dynamo_endpoint() -> str:
+    return os.getenv("DYNAMO_ENDPOINT", "http://dynamodb-local:8000")
+
+
+def _is_local_mode() -> bool:
+    return os.getenv("USE_LOCAL", "true").strip().lower() == "true"
+
+
 def _build_boto_kwargs() -> dict:
-    kwargs = {"region_name": AWS_REGION}
-    if USE_LOCAL and DYNAMO_ENDPOINT:
-        kwargs["endpoint_url"] = DYNAMO_ENDPOINT
+    kwargs = {"region_name": _aws_region()}
+    endpoint = _dynamo_endpoint()
+    if _is_local_mode() and endpoint:
+        kwargs["endpoint_url"] = endpoint
         kwargs["aws_access_key_id"] = os.getenv("AWS_ACCESS_KEY_ID", "fake")
         kwargs["aws_secret_access_key"] = os.getenv("AWS_SECRET_ACCESS_KEY", "fake")
     return kwargs
 
 
 def _get_table():
-    global _table
+    global _table, _table_signature
     if _using_in_memory():
         return None
-    if _table is None:
+    signature = (_table_name(), _is_local_mode(), _dynamo_endpoint())
+    if _table is None or _table_signature != signature:
         dynamodb = boto3.resource("dynamodb", **_build_boto_kwargs())
-        _table = dynamodb.Table(TABLE_NAME)
+        _table = dynamodb.Table(_table_name())
+        _table_signature = signature
     return _table
 
 
@@ -76,7 +91,7 @@ def create_table_if_not_exists() -> bool:
     client = boto3.client("dynamodb", **_build_boto_kwargs())
     try:
         client.create_table(
-            TableName=TABLE_NAME,
+            TableName=_table_name(),
             KeySchema=[{"AttributeName": "data_id", "KeyType": "HASH"}],
             AttributeDefinitions=[{"AttributeName": "data_id", "AttributeType": "S"}],
             BillingMode="PAY_PER_REQUEST",

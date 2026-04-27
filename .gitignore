@@ -3,6 +3,11 @@ __pycache__/
 .pytest_cache/
 .env
 .venv/
+.aws-sam/
+test-venv/
+test-venv2/
+test-venv3/
+.tmpbuildvenv/
 IoT_Project_Guide.html
 Distributed Systems Mini Project.pdf
 Case studies for Distributed Systems Mini Project (1).pdf

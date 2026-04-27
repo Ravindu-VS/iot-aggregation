@@ -1,17 +1,20 @@
 #include <ESP8266WiFi.h>
 #include <ESP8266HTTPClient.h>
-#include <WiFiClient.h>
+#include <WiFiClientSecureBearSSL.h>
 #include <Wire.h>
 #include <Adafruit_BMP085.h>
+#include <memory>
+#include "cloud_endpoint.h"
 
 // -------- Wi-Fi --------
 const char* WIFI_SSID = "Your Wi-Fi SSID";
 const char* WIFI_PASSWORD = "Your Wi-Fi Password";
 
-// API server: use your PC/Laptop LAN IP (not localhost)
-const char* API_HOST = "192.168.137.1";
-const uint16_t API_PORT = 5000;
 const char* API_PATH = "/data";
+
+#ifndef CLOUD_API_BASE_URL
+#define CLOUD_API_BASE_URL "https://REPLACE_WITH_DEPLOYED_API_URL/Prod"
+#endif
 
 // Node identity
 const char* NODE_ID = "NODE_PA";
@@ -98,13 +101,14 @@ bool publishMetrics(float pressure, float ethanol) {
     connectWifi();
   }
 
-  WiFiClient client;
+  std::unique_ptr<BearSSL::WiFiClientSecure> client(new BearSSL::WiFiClientSecure);
+  client->setInsecure();
   HTTPClient http;
 
-  String url = String("http://") + API_HOST + ":" + API_PORT + API_PATH;
+  String url = String(CLOUD_API_BASE_URL) + API_PATH;
   Serial.print("Posting to: ");
   Serial.println(url);
-  if (!http.begin(client, url)) {
+  if (!http.begin(*client, url)) {
     Serial.println("HTTP begin failed");
     return false;
   }

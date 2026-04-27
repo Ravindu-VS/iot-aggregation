@@ -5,16 +5,30 @@ import logging
 import os
 
 try:
+    import boto3
+except ImportError:
+    boto3 = None
+
+try:
     from minio import Minio
 except ImportError:
     Minio = None
+
+from shared.config import AWS_REGION, BUCKET_NAME, is_local_mode
 
 logger = logging.getLogger(__name__)
 
 MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT", "http://minio:9000")
 MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY", "minioadmin")
 MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY", "minioadmin")
-BUCKET_NAME = os.getenv("BUCKET_NAME", "iot-data-bucket")
+BUCKET_NAME = os.getenv("BUCKET_NAME", BUCKET_NAME)
+
+
+def _get_s3_client():
+    if boto3 is None:
+        logger.warning("boto3 not available; S3 storage disabled")
+        return None
+    return boto3.client("s3", region_name=AWS_REGION)
 
 
 def _get_minio_client():
@@ -38,6 +52,9 @@ def _get_minio_client():
 
 def ensure_bucket_exists():
     """Create bucket if it doesn't exist."""
+    if not is_local_mode():
+        return True
+
     client = _get_minio_client()
     if client is None:
         return False
@@ -63,24 +80,38 @@ def store_raw_payload(object_key: str, payload: dict) -> bool:
     Returns:
         True if stored successfully, False otherwise
     """
-    client = _get_minio_client()
-    if client is None:
-        logger.warning(f"MinIO client unavailable; skipping object storage for {object_key}")
+    data = json.dumps(payload).encode("utf-8")
+
+    if is_local_mode():
+        client = _get_minio_client()
+        if client is None:
+            logger.warning(f"MinIO client unavailable; skipping object storage for {object_key}")
+            return False
+
+        try:
+            client.put_object(
+                BUCKET_NAME,
+                object_key,
+                data,
+                length=len(data),
+                content_type="application/json",
+            )
+            logger.info(f"Stored raw payload to {BUCKET_NAME}/{object_key}")
+            return True
+        except Exception as exc:
+            logger.error(f"Failed to store object {object_key}: {exc}")
+            return False
+
+    s3 = _get_s3_client()
+    if s3 is None:
         return False
-    
+
     try:
-        data = json.dumps(payload).encode('utf-8')
-        client.put_object(
-            BUCKET_NAME,
-            object_key,
-            data,
-            length=len(data),
-            content_type="application/json",
-        )
-        logger.info(f"Stored raw payload to {BUCKET_NAME}/{object_key}")
+        s3.put_object(Bucket=BUCKET_NAME, Key=object_key, Body=data, ContentType="application/json")
+        logger.info(f"Stored raw payload to s3://{BUCKET_NAME}/{object_key}")
         return True
     except Exception as exc:
-        logger.error(f"Failed to store object {object_key}: {exc}")
+        logger.error(f"Failed to store object {object_key} in S3: {exc}")
         return False
 
 
@@ -94,15 +125,27 @@ def fetch_raw_payload(object_key: str) -> dict | None:
     Returns:
         Parsed payload dict, or None on error
     """
-    client = _get_minio_client()
-    if client is None:
-        logger.warning(f"MinIO client unavailable; cannot fetch {object_key}")
+    if is_local_mode():
+        client = _get_minio_client()
+        if client is None:
+            logger.warning(f"MinIO client unavailable; cannot fetch {object_key}")
+            return None
+
+        try:
+            response = client.get_object(BUCKET_NAME, object_key)
+            data = response.read().decode("utf-8")
+            return json.loads(data)
+        except Exception as exc:
+            logger.error(f"Failed to fetch object {object_key}: {exc}")
+            return None
+
+    s3 = _get_s3_client()
+    if s3 is None:
         return None
-    
+
     try:
-        response = client.get_object(BUCKET_NAME, object_key)
-        data = response.read().decode('utf-8')
-        return json.loads(data)
+        response = s3.get_object(Bucket=BUCKET_NAME, Key=object_key)
+        return json.loads(response["Body"].read().decode("utf-8"))
     except Exception as exc:
-        logger.error(f"Failed to fetch object {object_key}: {exc}")
+        logger.error(f"Failed to fetch object {object_key} from S3: {exc}")
         return None

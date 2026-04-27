@@ -4,11 +4,16 @@ import json
 import time
 
 try:
+    import boto3
+except ImportError:
+    boto3 = None
+
+try:
     import pika
 except ImportError:
     pika = None
 
-from shared.config import QUEUE_NAME, RABBITMQ_URL
+from shared.config import AWS_REGION, QUEUE_NAME, RABBITMQ_URL, SQS_QUEUE_URL, is_local_mode
 
 
 def _connection_parameters() -> pika.URLParameters:
@@ -33,6 +38,24 @@ def publish_job(job_payload: dict, retry_attempts: int = 3, retry_backoff_second
     if not has_legacy_values and not has_node_metrics:
         raise ValueError("Job payload must include values or node metrics")
 
+    if not is_local_mode():
+        _publish_sqs(job_payload)
+        return
+
+    _publish_rabbitmq(job_payload, retry_attempts, retry_backoff_seconds)
+
+
+def _publish_sqs(job_payload: dict) -> None:
+    if boto3 is None:
+        raise RuntimeError("boto3 is required for SQS publishing in cloud mode")
+    if not SQS_QUEUE_URL:
+        raise RuntimeError("SQS_QUEUE_URL is required in cloud mode")
+
+    client = boto3.client("sqs", region_name=AWS_REGION)
+    client.send_message(QueueUrl=SQS_QUEUE_URL, MessageBody=json.dumps(job_payload))
+
+
+def _publish_rabbitmq(job_payload: dict, retry_attempts: int, retry_backoff_seconds: int) -> None:
     body = json.dumps(job_payload)
     last_error = None
 

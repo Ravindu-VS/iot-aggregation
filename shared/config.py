@@ -1,5 +1,16 @@
 import os
 
+
+def _getenv_bool(name: str, default: bool) -> bool:
+	value = os.getenv(name)
+	if value is None:
+		return default
+	return value.strip().lower() == "true"
+
+
+def is_local_mode() -> bool:
+	return _getenv_bool("USE_LOCAL", True)
+
 QUEUE_NAME = os.getenv("QUEUE_NAME", "iot-jobs")
 RABBITMQ_URL = os.getenv("RABBITMQ_URL", "amqp://guest:guest@rabbitmq:5672/")
 MAX_JOB_RETRIES = int(os.getenv("MAX_JOB_RETRIES", "3"))
@@ -12,8 +23,10 @@ MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY", "minioadmin")
 
 DYNAMO_TABLE = os.getenv("DYNAMO_TABLE", "iot_data")
 ALERTS_TABLE = os.getenv("ALERTS_TABLE", "iot_alerts")
+ALERT_STATES_TABLE = os.getenv("ALERT_STATES_TABLE", "iot_alert_states")
 DYNAMO_ENDPOINT = os.getenv("DYNAMO_ENDPOINT", "http://dynamodb-local:8000")
 AWS_REGION = os.getenv("AWS_REGION", "us-east-1")
+SQS_QUEUE_URL = os.getenv("SQS_QUEUE_URL", "")
 
 API_PORT = int(os.getenv("API_PORT", "5000"))
-USE_LOCAL = os.getenv("USE_LOCAL", "true").lower() == "true"
+USE_LOCAL = is_local_mode()
