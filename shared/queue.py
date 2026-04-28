@@ -27,6 +27,7 @@ def _declare_queue(channel) -> None:
 
 
 def publish_job(job_payload: dict, retry_attempts: int = 3, retry_backoff_seconds: int = 2) -> None:
+    """Publish job to queue: RabbitMQ locally, SQS in cloud."""
     if "data_id" not in job_payload:
         raise ValueError("Job payload must include data_id")
 

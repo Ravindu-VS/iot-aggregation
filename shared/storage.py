@@ -71,7 +71,7 @@ def ensure_bucket_exists():
 
 def store_raw_payload(object_key: str, payload: dict) -> bool:
     """
-    Store raw sensor payload to MinIO.
+    Store raw sensor payload to object storage.
     
     Args:
         object_key: Path where to store (e.g., 'raw/NODE_TH/data-id.json')
@@ -117,7 +117,7 @@ def store_raw_payload(object_key: str, payload: dict) -> bool:
 
 def fetch_raw_payload(object_key: str) -> dict | None:
     """
-    Fetch raw sensor payload from MinIO.
+    Fetch raw sensor payload from object storage.
     
     Args:
         object_key: Path to fetch

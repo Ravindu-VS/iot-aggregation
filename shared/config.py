@@ -9,7 +9,8 @@ def _getenv_bool(name: str, default: bool) -> bool:
 
 
 def is_local_mode() -> bool:
-	return _getenv_bool("USE_LOCAL", True)
+    """Check if running in local development mode."""
+    return _getenv_bool("USE_LOCAL", True)
 
 QUEUE_NAME = os.getenv("QUEUE_NAME", "iot-jobs")
 RABBITMQ_URL = os.getenv("RABBITMQ_URL", "amqp://guest:guest@rabbitmq:5672/")

@@ -44,6 +44,7 @@ ALERT_THRESHOLDS = {
 
 
 def parse_job_message(body: bytes) -> dict:
+    """Parse and validate job message from queue."""
     try:
         payload = json.loads(body.decode("utf-8"))
     except Exception as exc:
@@ -83,6 +84,7 @@ def parse_job_message(body: bytes) -> dict:
 
 
 def process_job(payload: dict) -> dict:
+    """Main job processing: compute summary and update database."""
     data_id = payload["data_id"]
     is_metrics_job = payload.get("is_metrics_job", False)
     
@@ -176,6 +178,7 @@ def _evaluate_threshold_message(threshold: dict, value: float) -> str | None:
 
 
 def handle_job_failure(payload: dict, error: Exception) -> str:
+    """Handle job failure: retry or mark as failed."""
     data_id = payload.get("data_id", "")
     retry_count = int(payload.get("retry_count", 0))
 
@@ -203,6 +206,7 @@ def handle_job_failure(payload: dict, error: Exception) -> str:
 
 
 def on_message(channel, method, properties, body: bytes) -> None:
+    """RabbitMQ message handler: process job and ACK."""
     payload = None
     try:
         payload = parse_job_message(body)
@@ -230,6 +234,7 @@ def _build_connection() -> pika.BlockingConnection:
 
 
 def start_worker_loop() -> None:
+    """Start worker: setup DB tables and consume queue messages."""
     create_table_if_not_exists()
     create_alerts_table_if_not_exists()
     create_alert_states_table_if_not_exists()
